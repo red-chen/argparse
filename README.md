@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/red-chen/goargs.svg?branch=master)](https://travis-ci.org/red-chen/goargs)
 [![Report Status](https://goreportcard.com/badge/github.com/red-chen/goargs)](https://goreportcard.com/report/github.com/red-chen/goargs)
-
+[![Coverage Status](https://coveralls.io/repos/github/red-chen/goargs/badge.svg?branch=master)](https://coveralls.io/github/red-chen/goargs?branch=master)
 [中文](README_cn.md)
 
 The goargs module makes it easy to write user-friendly command-line interfaces.
