@@ -3,19 +3,19 @@
 [![Build Status](https://travis-ci.org/red-chen/goargs.svg?branch=master)](https://travis-ci.org/red-chen/goargs)
 [![Report Status](https://goreportcard.com/badge/github.com/red-chen/goargs)](https://goreportcard.com/report/github.com/red-chen/goargs)
 [![Coverage Status](https://coveralls.io/repos/github/red-chen/goargs/badge.svg?branch=master)](https://coveralls.io/github/red-chen/goargs?branch=master)
-[中文](README_cn.md)
 
-The goargs module makes it easy to write user-friendly command-line interfaces.
-The program defines what arguments it requires, and goargs will figure out how
-to parse those out of os.Args. The goargs module also automatically generates
-help and usage messages and issues errors when users give the program invalid
-arguments.
 
-# Example
+GoArgs非常便于创建用户友好的命令行命令。比如设置可选和必选参数，添加不同的操作方法，GoArgs会自动
+解析os.Args的输入参数。同时，GoArgs会自动根据用户编程的设定，显示友好的帮助信息。
 
-The following code is sample code
 
-### Example1 : Base sample
+GoArgs的思想来自于Python的argparser。
+
+
+# 实例
+
+
+### 实例一：最基础的用法
 
 ```
 package main
@@ -77,7 +77,7 @@ test
 false
 ```
 
-### Example2 : Sub-Command
+### 示例二 : 多个子方法
 
 ```
 package main
