@@ -2,13 +2,20 @@ language: go
 
 go:
   - 1.8.x
-  - tip
+  - 1.9.x
 
-before_install:
-  - go get -t -v ./...
+install:#依赖安装
+  - go get github.com/go-playground/overalls #overalls能够支持到各级子目录
+  - go get github.com/mattn/goveralls #goveralls是coveralls对golang的测试覆盖率支持命令
+  - go get github.com/smartystreets/goconvey#很好用的测试工具
+  - mkdir -p $GOPATH/src/github.com/red-chen
+  - cd $GOPATH/src/github.com/red-chen/goargs
 
-script:
-  - go test -race -coverprofile=coverage.txt -covermode=atomic
+script:# 集成脚本
+    - overalls -project=github.com/red-chen/goargs -covermode=count -ignore='.git,_vendor'
+    - goveralls -coverprofile=overalls.coverprofile -service=travis-ci -repotoken $COVERALLS_TOKEN
+    - go test -race -coverprofile=coverage.txt -covermode=atomic # 注意要添加这一行，否则不会出现 codecov bot
+    - go test ./...
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
