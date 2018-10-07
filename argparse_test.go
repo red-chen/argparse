@@ -1,6 +1,9 @@
-package argparse
+package goargs
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 /*
 测试用例：parseLongOption
@@ -25,14 +28,15 @@ func TestParseLongOptionErrMissValue(t *testing.T) {
 	var parser *Parser
 
 	params := []string{"--mode"}
-	parser = ArgumentParser()
-	parser.AddOption("mode", "mode help")
+	parser = ArgumentParser("", "")
+	parser.AddOption("mode", "mode help").Long("mode")
 	_, err = parser.parseLongOption(params[0], params[1:])
 
 	if err == nil {
 		t.Error()
 	}
 
+	fmt.Println(err)
 	if err.Error() != "flag needs an argument: --mode" {
 		t.Error(err)
 	}
@@ -44,7 +48,7 @@ func TestParseLongOptionBasicWithBoolTrue(t *testing.T) {
 	var p *Option
 
 	params := []string{"--force"}
-	parser = ArgumentParser()
+	parser = ArgumentParser("", "")
 	// 表示在命令行中，如果声明了Flag，但是没有传入参数，那么就采用Bool中设置的值
 	parser.AddOption("force", "force do something").Bool(true)
 	_, err = parser.parseLongOption(params[0], params[1:])
@@ -70,7 +74,7 @@ func TestParseLongOptionBasicWithBoolFalse(t *testing.T) {
 	var p *Option
 
 	params := []string{"--force"}
-	parser = ArgumentParser()
+	parser = ArgumentParser("", "")
 	// 表示在命令行中，如果声明了Flag，但是没有传入参数，那么就采用Bool中设置的值
 	parser.AddOption("force", "force do something").Bool(false)
 	_, err = parser.parseLongOption(params[0], params[1:])
@@ -96,8 +100,8 @@ func TestParseLongOptionBasic(t *testing.T) {
 	var parser *Parser
 
 	params := []string{"--mode=test", "-p"}
-	parser = ArgumentParser()
-	parser.AddOption("mode", "mode help")
+	parser = ArgumentParser("", "")
+	parser.AddOption("mode", "mode help").Long("mode")
 	remain, err = parser.parseLongOption(params[0], params[1:])
 
 	if err != nil {
@@ -127,8 +131,8 @@ func TestParseLongOptionBasicWithSpace(t *testing.T) {
 	var parser *Parser
 
 	params := []string{"--mode", "test", "-p"}
-	parser = ArgumentParser()
-	parser.AddOption("mode", "mode help")
+	parser = ArgumentParser("", "")
+	parser.AddOption("mode", "mode help").Long("mode")
 	remain, err = parser.parseLongOption(params[0], params[1:])
 
 	if err != nil {
@@ -161,11 +165,11 @@ func TestParseLongOptionBasicOptInSuperParser(t *testing.T) {
 	var v string
 
 	params := []string{"upload", "--mode=test", "--name", "readme.md"}
-	parser = ArgumentParser()
-	parser.AddOption("mode", "mode help")
+	parser = ArgumentParser("", "")
+	parser.AddOption("mode", "mode help").Long("mode")
 
 	upload := parser.AddParser("upload", "upload help")
-	upload.AddOption("name", "name of file.")
+	upload.AddOption("name", "name of file.").Long("name")
 
 	// 解析参数
 	remain, err = upload.parseLongOption(params[1], params[2:])
@@ -215,15 +219,15 @@ func TestParseLongOptionBasicOptInSuperSuperParser(t *testing.T) {
 	var v string
 
 	params := []string{"upload", "file", "--mode=test", "--name", "readme.md", "--len=178"}
-	parser = ArgumentParser()
-	parser.AddOption("mode", "mode help")
+	parser = ArgumentParser("", "")
+	parser.AddOption("mode", "mode help").Long("mode")
 
 	upload := parser.AddParser("upload", "upload help")
-	upload.AddOption("type", "type of file.")
-	upload.AddOption("name", "name of file.")
+	upload.AddOption("type", "type of file.").Long("type")
+	upload.AddOption("name", "name of file.").Long("name")
 
 	uploadFile := upload.AddParser("file", "upload file help")
-	uploadFile.AddOption("len", "len of file.")
+	uploadFile.AddOption("len", "len of file.").Long("len")
 
 	// 解析参数
 	remain, err = uploadFile.parseLongOption(params[2], params[3:])
@@ -277,7 +281,3 @@ func TestParseLongOptionBasicOptInSuperSuperParser(t *testing.T) {
 		t.Error(v)
 	}
 }
-
-/*
-测试用例：
-*/

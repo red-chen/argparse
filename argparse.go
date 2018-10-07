@@ -1,4 +1,4 @@
-package argparse
+package goargs
 
 import (
 	"bytes"
@@ -54,12 +54,15 @@ func ArgumentParser(n string, h string) *Parser {
 
 func (self *Parser) AddParser(cmd string, help string) *Parser {
 	p := &Parser{
-		Title: cmd,
-		Help:  help,
-		Super: self,
-		Root:  self.Root,
-		Subs:  map[string]*Parser{},
-		Opts:  map[string]*Option{},
+		Title:       cmd,
+		Help:        help,
+		Super:       self,
+		Root:        self.Root,
+		Subs:        map[string]*Parser{},
+		Opts:        map[string]*Option{},
+		ShortOpts:   map[rune]*Option{},
+		LongOpts:    map[string]*Option{},
+		HandlerFunc: nil,
 	}
 	self.Subs[cmd] = p
 	return p
@@ -99,13 +102,13 @@ func (self *Parser) lookupParser(sources map[string]*Parser, cmds []string) (*Pa
 }
 
 // 逐层回溯父Parser的Opts
-func (self *Parser) getLongOption(paser *Parser, opt string) (option *Option, exists bool) {
-	option, exists = paser.LongOpts[opt]
+func (self *Parser) getLongOption(parser *Parser, opt string) (option *Option, exists bool) {
+	option, exists = parser.LongOpts[opt]
 	if !exists {
-		if paser.Super == nil {
+		if parser.Super == nil {
 			return
 		}
-		return self.getLongOption(paser.Super, opt)
+		return self.getLongOption(parser.Super, opt)
 	}
 	return
 }
@@ -119,10 +122,8 @@ func (self *Parser) parseLongOption(opt string, params []string) (remain []strin
 		err = errors.New("bad flag syntax")
 		return
 	}
-
 	split := strings.SplitN(opt, "=", 2)
 	opt = split[0]
-
 	option, exists := self.getLongOption(self, opt)
 	if !exists {
 		if opt == "help" {
@@ -133,7 +134,6 @@ func (self *Parser) parseLongOption(opt string, params []string) (remain []strin
 		// skip unknown option
 		return
 	}
-
 	if len(split) == 2 {
 		// '--flag=arg'
 		value = split[1]
@@ -329,6 +329,9 @@ func (self *Parser) ParseArgs(input []string) (result *Result) {
 }
 
 func (self *Result) Handle() {
+	if self.HandlerFunc == nil && self.cx.parser.Title == "root" {
+		// TODO
+	}
 	self.HandlerFunc(self.cx)
 }
 
@@ -372,37 +375,44 @@ func (self *Parser) OptionText() string {
 // TODO 格式化
 func (self *Parser) OptionDetailText() string {
 	buf := new(bytes.Buffer)
-	lines := []string{}
+	prefixs := []string{}
 	maxlen := 0
+
 	for _, v := range self.Opts {
 		line := ""
-
 		if v.shortV != 0 {
 			if v.setBool {
-				line = fmt.Sprintf("  -%c      ", v.shortV)
+				sOpt := fmt.Sprintf("-%c", v.shortV)
+				line = fmt.Sprintf("%4s", sOpt)
 			} else {
-				line = fmt.Sprintf("  -%c, --%s", v.shortV, v.longV)
+				sOpt := fmt.Sprintf("-%c", v.shortV)
+				line = fmt.Sprintf("%4s, --%s", sOpt, v.longV)
 			}
 
 		} else {
-			line = fmt.Sprintf("      --%s", v.longV)
+			line = fmt.Sprintf("--%s", v.longV)
 		}
 
-		line += " " + v.help
-
-		//line += "\x00"
 		if len(line) > maxlen {
 			maxlen = len(line)
 		}
-		lines = append(lines, line)
+		prefixs = append(prefixs, line)
+	}
 
+	f := fmt.Sprintf("%%-%ds", maxlen)
+
+	lines := []string{}
+	index := 0
+	for _, v := range self.Opts {
+		line := prefixs[index]
+		out := fmt.Sprintf(f+" %s", line, v.help)
+		lines = append(lines, out)
+		index++
 	}
 
 	sort.Strings(lines)
 
 	for _, line := range lines {
-		//sidx := strings.Index(line, "\x00")
-		//spacing := strings.Repeat(" ", maxlen-sidx)
 		fmt.Fprintln(buf, line)
 	}
 
@@ -412,16 +422,21 @@ func (self *Parser) OptionDetailText() string {
 func (self *Parser) SubCommandText() string {
 	buf := new(bytes.Buffer)
 	lines := []string{}
+	maxlen := 0
 	for _, v := range self.Subs {
-		line := fmt.Sprintf("  %s	%s", v.Title, v.Help)
+		if len(v.Title) > maxlen {
+			maxlen = len(v.Title)
+		}
+	}
+	f := fmt.Sprintf("%%-%ds", maxlen)
+	for _, v := range self.Subs {
+		line := fmt.Sprintf(f+" %s", v.Title, v.Help)
 		lines = append(lines, line)
 	}
 
 	sort.Strings(lines)
 
 	for _, line := range lines {
-		//sidx := strings.Index(line, "\x00")
-		//spacing := strings.Repeat(" ", maxlen-sidx)
 		fmt.Fprintln(buf, line)
 	}
 

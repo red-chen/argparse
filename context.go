@@ -1,4 +1,4 @@
-package argparse
+package goargs
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package argparse
+package goargs
 
 import "testing"
 
@@ -6,7 +6,11 @@ func Test_Option_Basic(t *testing.T) {
 	var err error
 	// 最简单初始化测试
 	{
-		arg := newOption("mode", "help mode", nil)
+		parser := &Parser{
+			ShortOpts: map[rune]*Option{},
+			LongOpts:  map[string]*Option{},
+		}
+		arg := newOption("mode", "help mode", parser)
 		if err = arg.parse("test"); err != nil {
 			t.Error(err)
 		}
@@ -330,7 +334,12 @@ func Test_Option_Required(t *testing.T) {
 	var err error
 	var arg *Option
 
-	arg = newOption("mode", "help mode", nil).Required()
+	parser := &Parser{
+		ShortOpts: map[rune]*Option{},
+		LongOpts:  map[string]*Option{},
+	}
+
+	arg = newOption("mode", "help mode", parser).Required()
 
 	// check
 	if "mode" != arg.dest {
@@ -375,7 +384,7 @@ func Test_Option_Required(t *testing.T) {
 		t.Error()
 	}
 
-	arg = newOption("mode", "help mode", nil).Required().Short('m')
+	arg = newOption("mode", "help mode", parser).Required().Short('m')
 	if 'm' != arg.shortV {
 		t.Error()
 	}
@@ -386,7 +395,7 @@ func Test_Option_Required(t *testing.T) {
 	if err.Error() != "Missing required option: '-m'" {
 		t.Error(err)
 	}
-	arg = newOption("mode", "help mode", nil).Required().Short('m').Long("mymode")
+	arg = newOption("mode", "help mode", parser).Required().Short('m').Long("mymode")
 	if 'm' != arg.shortV {
 		t.Error()
 	}
