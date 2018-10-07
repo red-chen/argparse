@@ -1,5 +1,7 @@
 # GoArgs
 
+[travis](https://travis-ci.org/red-chen/goargs.svg?branch=master)
+
 [中文](README_cn.md)
 
 The goargs module makes it easy to write user-friendly command-line interfaces.
