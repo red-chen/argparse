@@ -1,6 +1,7 @@
 # GoArgs
 
 [![Build Status](https://travis-ci.org/red-chen/goargs.svg?branch=master)](https://travis-ci.org/red-chen/goargs)
+[![Report Status](https://goreportcard.com/badge/github.com/red-chen/goargs)](https://goreportcard.com/report/github.com/red-chen/goargs)
 
 [中文](README_cn.md)
 
