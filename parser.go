@@ -31,6 +31,8 @@ type Parser struct {
 }
 
 type Result struct {
+	Title       string
+	err         error
 	cx          *Context
 	HandlerFunc Handler
 }
@@ -54,6 +56,7 @@ func ArgumentParser(n string, h string) *Parser {
 
 func (self *Parser) AddParser(cmd string, help string) *Parser {
 	p := &Parser{
+		Name:        cmd,
 		Title:       cmd,
 		Help:        help,
 		Super:       self,
@@ -79,23 +82,21 @@ func (self *Parser) SetDefaults(handler Handler) {
 }
 
 // ./app upload -m test -c /tmp/conifg.json
-func (self *Parser) lookupParser(sources map[string]*Parser, cmds []string) (*Parser, error) {
+func (self *Parser) lookupParser(sources map[string]*Parser, cmds []string, options map[string]*Option) (*Parser, error) {
 	if sources == nil {
 		return nil, ERR_NotFound
 	}
 
+	for _, v := range self.Opts {
+		options[v.dest] = v
+	}
+
 	if len(cmds) == 0 {
 		return self, nil
-	} else if len(cmds) == 1 {
-		m := cmds[0]
-		if parser, ok := sources[m]; ok {
-			return parser, nil
-		}
-		return nil, ERR_NotFound
 	} else {
 		m := cmds[0]
 		if parser, ok := sources[m]; ok {
-			return self.lookupParser(parser.Subs, cmds[1:])
+			return parser.lookupParser(parser.Subs, cmds[1:], options)
 		}
 		return nil, ERR_NotFound
 	}
@@ -131,7 +132,8 @@ func (self *Parser) parseLongOption(opt string, params []string) (remain []strin
 			err = ERR_Usage
 			return
 		}
-		// skip unknown option
+		// skip unknown option ?
+		err = fmt.Errorf("Unrecognized arguments: --%s", opt)
 		return
 	}
 	if len(split) == 2 {
@@ -145,10 +147,9 @@ func (self *Parser) parseLongOption(opt string, params []string) (remain []strin
 		remain = remain[1:]
 	} else {
 		// '--flag' (arg was required)
-		err = errors.New(fmt.Sprintf("flag needs an argument: --%s", opt))
+		err = errors.New(fmt.Sprintf("Flag needs an argument: --%s", opt))
 		return
 	}
-
 	err = option.parse(value)
 	return
 }
@@ -179,7 +180,7 @@ func (self *Parser) parserSingleShortOption(opt string, params []string) (outOpt
 			err = ERR_Usage
 			return
 		default:
-			err = errors.New(fmt.Sprintf("unknown short flag: %q in -%s", c, opt))
+			err = errors.New(fmt.Sprintf("Unknown short flag: %q in -%s", c, opt))
 			return
 		}
 	}
@@ -199,7 +200,7 @@ func (self *Parser) parserSingleShortOption(opt string, params []string) (outOpt
 		value = params[0]
 		remain = params[1:]
 	} else {
-		err = errors.New(fmt.Sprintf("flag needs an argument: %q in -%s", c, opt))
+		err = errors.New(fmt.Sprintf("Flag needs an argument: %q in -%s", c, opt))
 		return
 	}
 
@@ -259,29 +260,25 @@ func (self *Parser) getCmdsAndParams(input []string) (cmds []string, params []st
 	return
 }
 
-func (self *Parser) preFilterAllOption(p *Parser) (options map[string]*Option) {
-	options = map[string]*Option{}
-	for _, v := range p.Opts {
+// 前置动作，填写默认参数，默认Dest等
+func (self *Parser) preFilterAllOption() {
+	for _, v := range self.Opts {
 		v.pre()
-		options[v.dest] = v
 	}
 
-	for _, v := range p.Subs {
-		tmp := self.preFilterAllOption(v)
-		for kk, vv := range tmp {
-			options[kk] = vv
-		}
+	for _, v := range self.Subs {
+		v.preFilterAllOption()
 	}
 	return
 }
 
-func (self *Parser) postFilterAllOption(p *Parser) (err error) {
-	for _, v := range p.Opts {
+func (self *Parser) postFilterAllOption() (err error) {
+	for _, v := range self.Opts {
 		err = v.post()
 	}
 
-	for _, v := range p.Subs {
-		err = self.postFilterAllOption(v)
+	for _, v := range self.Subs {
+		err = v.postFilterAllOption()
 	}
 
 	return
@@ -291,48 +288,68 @@ func (self *Parser) ParseArgs(input []string) (result *Result) {
 	var err error
 	var parser *Parser
 
-	options := self.preFilterAllOption(self)
+	cx := &Context{
+		parser: self,
+	}
+	result = &Result{
+		err:         err,
+		cx:          cx,
+		HandlerFunc: self.HandlerFunc,
+	}
+
+	// Pre操作, 设置默认的longV等
+	self.preFilterAllOption()
 
 	// 解析为对应的参数
 	// 先找到method，然后根据method检查对应的参数
 	cmds, params := self.getCmdsAndParams(input)
 
 	// 查找对应的Parser
-	if parser, err = self.lookupParser(self.Subs, cmds); err != nil {
-		panic(err)
+	options := map[string]*Option{}
+	if parser, err = self.lookupParser(self.Subs, cmds, options); err != nil {
+		result.err = err
+		return
 	}
+	result.Title = parser.Title
+	cx.options = options
+
 	// 执行参数检查和绑定
 	if err = parser.bindParams(params); err != nil {
-		switch err {
-		case ERR_Usage:
-			os.Exit(0)
-		default:
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		result.err = err
+		return
 	}
 
-	if err = self.postFilterAllOption(self); err != nil {
-		panic(err)
+	// Post 操作，检查必选等
+	if err = self.postFilterAllOption(); err != nil {
+		result.err = err
+		return
 	}
-
-	c := &Context{
-		options: options,
-		parser:  self,
-	}
-	result = &Result{
-		cx:          c,
-		HandlerFunc: self.HandlerFunc,
-	}
-
 	return
 }
 
-func (self *Result) Handle() {
-	if self.HandlerFunc == nil && self.cx.parser.Title == "root" {
-		// TODO
+func (self *Result) Handle() (err error) {
+	if self.err != nil {
+		return self.err
+	}
+	if self.HandlerFunc == nil {
+		return fmt.Errorf("missing handler in %s", self.Title)
 	}
 	self.HandlerFunc(self.cx)
+	err = self.cx.err
+	return
+}
+
+func (self *Result) HandleError() {
+	self.Handle()
+	if self.err != nil {
+		switch self.err {
+		case ERR_Usage:
+			os.Exit(0)
+		default:
+			fmt.Printf("err: %s\n", self.err)
+			os.Exit(1)
+		}
+	}
 }
 
 // for usage

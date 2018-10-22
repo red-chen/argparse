@@ -11,6 +11,7 @@ import (
 type Context struct {
 	options map[string]*Option // 包括了当前Parser以及之上的所有父Pasrser的Option
 	parser  *Parser            // 关联的解析器
+	err     error
 }
 
 func (self *Context) GetString(dest string) (v string, err error) {
@@ -27,4 +28,8 @@ func (self *Context) GetBool(dest string) (v bool, err error) {
 	}
 	err = errors.New("NotFound")
 	return
+}
+
+func (self *Context) Error(err error) {
+	self.err = err
 }

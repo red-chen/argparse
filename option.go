@@ -22,6 +22,7 @@ type Option struct {
 
 func newOption(dest string, help string, father *Parser) *Option {
 	self := &Option{
+		//longV: dest,  // 不能设定，只有当short和long都没有设定时，longV才被设置为dest
 		dest:      dest,
 		help:      help,
 		requiredV: false,
@@ -118,7 +119,7 @@ func (self *Option) parse(v interface{}) (err error) {
 func (self *Option) pre() {
 	// 当时用户未显示设置Short和Long时，Long默认和Dest一样
 	if self.longV == "" && self.shortV == 0 {
-		self.longV = self.dest
+		self.Long(self.dest)
 	}
 }
 
